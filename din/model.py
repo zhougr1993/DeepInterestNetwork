@@ -64,7 +64,7 @@ class Model(object):
     #d_layer_1_i = tf.layers.dense(din_i, 80, activation=None, name='f1')
     #d_layer_1_i = dice(d_layer_1_i, name='dice_1_i')
     d_layer_2_i = tf.layers.dense(d_layer_1_i, 40, activation=tf.nn.sigmoid, name='f2')
-    d_layer_2_i = dice(d_layer_2_i, name='dice_2_i')
+    #d_layer_2_i = dice(d_layer_2_i, name='dice_2_i')
     d_layer_3_i = tf.layers.dense(d_layer_2_i, 1, activation=None, name='f3')
     din_j = tf.concat([u_emb, j_emb], axis=-1)
     din_j = tf.layers.batch_normalization(inputs=din_j, name='b1', reuse=True)
@@ -99,6 +99,12 @@ class Model(object):
 
     
     self.mf_auc = tf.reduce_mean(tf.to_float(x > 0))
+    self.score_i = tf.sigmoid(i_b + d_layer_3_i)
+    self.score_j = tf.sigmoid(j_b + d_layer_3_j)
+    self.score_i = tf.reshape(self.score_i, [-1, 1])
+    self.score_j = tf.reshape(self.score_j, [-1, 1])
+    self.p_and_n = tf.concat([self.score_i, self.score_j], axis=-1)
+    print self.p_and_n.get_shape().as_list()
 
 
     # Step variable
@@ -134,14 +140,14 @@ class Model(object):
     return loss
 
   def eval(self, sess, uij):
-    u_auc = sess.run(self.mf_auc, feed_dict={
+    u_auc, socre_p_and_n = sess.run([self.mf_auc, self.p_and_n], feed_dict={
         self.u: uij[0],
         self.i: uij[1],
         self.j: uij[2],
         self.hist_i: uij[3],
         self.sl: uij[4],
         })
-    return u_auc
+    return u_auc, socre_p_and_n
 
   def test(self, sess, uid, hist_i, sl):
     return sess.run(self.logits_all, feed_dict={

@@ -95,6 +95,12 @@ class Model(object):
 
     
     self.mf_auc = tf.reduce_mean(tf.to_float(x > 0))
+    self.score_i = tf.sigmoid(i_b + d_layer_3_i)
+    self.score_j = tf.sigmoid(j_b + d_layer_3_j)
+    self.score_i = tf.reshape(self.score_i, [-1, 1])
+    self.score_j = tf.reshape(self.score_j, [-1, 1])
+    self.p_and_n = tf.concat([self.score_i, self.score_j], axis=-1)
+    print self.p_and_n.get_shape().as_list()
 
     # Step variable
     self.global_step = tf.Variable(0, trainable=False, name='global_step')
@@ -131,14 +137,14 @@ class Model(object):
     return loss
 
   def eval(self, sess, uij):
-    u_auc = sess.run(self.mf_auc, feed_dict={
+    u_auc, socre_p_and_n = sess.run([self.mf_auc, self.p_and_n], feed_dict={
         self.u: uij[0],
         self.i: uij[1],
         self.j: uij[2],
         self.hist_i: uij[3],
         self.sl: uij[4],
         })
-    return u_auc
+    return u_auc, socre_p_and_n
 
   def test(self, sess, uid, hist_i, sl):
     return sess.run(self.logits_all, feed_dict={
