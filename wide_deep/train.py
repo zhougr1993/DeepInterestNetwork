@@ -8,7 +8,7 @@ import sys
 from input import DataInput, DataInputTest
 from model import Model
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 random.seed(1234)
 np.random.seed(1234)
 tf.set_random_seed(1234)
@@ -68,6 +68,7 @@ def _auc_arr(score):
   return score_arr
 def _eval(sess, model):
   auc_sum = 0.0
+  score_arr = []
   for _, uij in DataInputTest(test_set, test_batch_size):
     auc_, score_ = model.eval(sess, uij)
     score_arr += _auc_arr(score_)
@@ -90,9 +91,9 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
 
   print('test_gauc: %.4f\t test_auc: %.4f' % _eval(sess, model))
   sys.stdout.flush()
-  lr = 1.0
+  lr = 1
   start_time = time.time()
-  for _ in range(50):
+  for _ in range(30):
 
     random.shuffle(train_set)
 

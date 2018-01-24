@@ -68,6 +68,7 @@ def _auc_arr(score):
   return score_arr
 def _eval(sess, model):
   auc_sum = 0.0
+  score_arr = []
   for _, uij in DataInputTest(test_set, test_batch_size):
     auc_, score_ = model.eval(sess, uij)
     score_arr += _auc_arr(score_)

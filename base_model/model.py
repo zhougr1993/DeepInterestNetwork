@@ -1,5 +1,9 @@
 import tensorflow as tf
 
+from tensorflow.python.ops.rnn_cell import GRUCell
+from tensorflow.python.ops.rnn_cell import LSTMCell
+from tensorflow.python.ops.rnn_cell import MultiRNNCell
+
 class Model(object):
 
   def __init__(self, user_count, item_count, cate_count, cate_list):
@@ -42,8 +46,8 @@ class Model(object):
         tf.nn.embedding_lookup(item_emb_w, self.hist_i),
         tf.nn.embedding_lookup(cate_emb_w, hc),
         ], axis=2)
-    #-- sum begin --------
-    # mask the zero padding part
+
+    #-- sum begin -------
     mask = tf.sequence_mask(self.sl, tf.shape(h_emb)[1], dtype=tf.float32) # [B, T]
     mask = tf.expand_dims(mask, -1) # [B, T, 1]
     mask = tf.tile(mask, [1, 1, tf.shape(h_emb)[2]]) # [B, T, H]
@@ -65,24 +69,15 @@ class Model(object):
     d_layer_1_i = tf.layers.dense(din_i, 80, activation=tf.nn.sigmoid, name='f1')
     d_layer_2_i = tf.layers.dense(d_layer_1_i, 40, activation=tf.nn.sigmoid, name='f2')
     d_layer_3_i = tf.layers.dense(d_layer_2_i, 1, activation=None, name='f3')
-    # wide part
-    d_layer_wide_i = tf.concat([tf.gather(u_emb, [0], axis=-1) * tf.gather(i_emb, [0], axis=-1), tf.gather(u_emb, [-1], axis=-1) * tf.gather(i_emb, [-1], axis=-1),
-                     tf.gather(u_emb, [hidden_units // 2], axis=-1) * tf.gather(i_emb, [hidden_units // 2], axis=-1)], axis=-1)
-    d_layer_wide_i = tf.layers.dense(d_layer_wide_i, 1, activation=None, name='f_wide')
     din_j = tf.concat([u_emb, j_emb], axis=-1)
     din_j = tf.layers.batch_normalization(inputs=din_j, name='b1', reuse=True)
     d_layer_1_j = tf.layers.dense(din_j, 80, activation=tf.nn.sigmoid, name='f1', reuse=True)
     d_layer_2_j = tf.layers.dense(d_layer_1_j, 40, activation=tf.nn.sigmoid, name='f2', reuse=True)
     d_layer_3_j = tf.layers.dense(d_layer_2_j, 1, activation=None, name='f3', reuse=True)
-    d_layer_wide_j = tf.concat([tf.gather(u_emb, [0], axis=-1) * tf.gather(j_emb, [0], axis=-1), tf.gather(u_emb, [-1], axis=-1) * tf.gather(j_emb, [-1], axis=-1),
-                     tf.gather(u_emb, [hidden_units // 2], axis=-1) * tf.gather(j_emb, [hidden_units // 2], axis=-1)], axis=-1)
-    d_layer_wide_j = tf.layers.dense(d_layer_wide_j, 1, activation=None, name='f_wide', reuse=True)
     d_layer_3_i = tf.reshape(d_layer_3_i, [-1])
     d_layer_3_j = tf.reshape(d_layer_3_j, [-1])
-    d_layer_wide_i = tf.reshape(d_layer_wide_i, [-1])
-    d_layer_wide_j = tf.reshape(d_layer_wide_j, [-1])
-    x = i_b - j_b + d_layer_3_i - d_layer_3_j + d_layer_wide_i - d_layer_wide_j # [B]
-    self.logits = i_b + d_layer_3_i + d_layer_wide_i
+    x = i_b - j_b + d_layer_3_i - d_layer_3_j # [B]
+    self.logits = i_b + d_layer_3_i
     u_emb_all = tf.expand_dims(u_emb, 1)
     u_emb_all = tf.tile(u_emb_all, [1, item_count, 1])
     # logits for all item:
@@ -97,11 +92,8 @@ class Model(object):
     d_layer_1_all = tf.layers.dense(din_all, 80, activation=tf.nn.sigmoid, name='f1', reuse=True)
     d_layer_2_all = tf.layers.dense(d_layer_1_all, 40, activation=tf.nn.sigmoid, name='f2', reuse=True)
     d_layer_3_all = tf.layers.dense(d_layer_2_all, 1, activation=None, name='f3', reuse=True)
-    d_layer_wide_all = tf.concat([tf.gather(u_emb_all, [0], axis=-1) * tf.gather(all_emb, [0], axis=-1), tf.gather(u_emb_all, [-1], axis=-1) * tf.gather(all_emb, [-1], axis=-1), tf.gather(u_emb_all, [hidden_units // 2], axis=-1) * tf.gather(all_emb, [hidden_units // 2], axis=-1)], axis=-1)
-    d_layer_wide_all = tf.layers.dense(d_layer_wide_all, 1, activation=None, name='f_wide', reuse=True)
     d_layer_3_all = tf.reshape(d_layer_3_all, [-1, item_count])
-    d_layer_wide_all = tf.reshape(d_layer_wide_all, [-1, item_count])
-    self.logits_all = tf.sigmoid(item_b + d_layer_3_all + d_layer_wide_all)
+    self.logits_all = tf.sigmoid(item_b + d_layer_3_all)
     #-- fcn end -------
 
     
@@ -121,7 +113,6 @@ class Model(object):
     self.global_epoch_step_op = \
         tf.assign(self.global_epoch_step, self.global_epoch_step+1)
 
-    regulation_rate = 0.0
     self.loss = tf.reduce_mean(
         tf.nn.sigmoid_cross_entropy_with_logits(
             logits=self.logits,
