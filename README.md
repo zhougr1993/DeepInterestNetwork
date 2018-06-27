@@ -4,7 +4,7 @@ Deep Interest Network for Click-Through Rate Prediction
 ## Introduction
 This is an implementation of the paper [Deep Interest Network for Click-Through Rate Prediction](https://arxiv.org/abs/1706.06978) Guorui Zhou, Chengru Song, Xiaoqiang Zhu, Han Zhu, Ying Fan, Na Mou, Xiao Ma, Yanghui Yan, Xingya Dai, Junqi Jin, Han Li, Kun Gai
 
-Thanks to Jinze Bai and Chang Zhou.
+Thanks Jinze Bai and Chang Zhou.
 
 Bibtex:
 ```sh
