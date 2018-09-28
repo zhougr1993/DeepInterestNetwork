@@ -23,8 +23,6 @@ class Model(object):
     cate_emb_w = tf.get_variable("cate_emb_w", [cate_count, hidden_units // 2])
     cate_list = tf.convert_to_tensor(cate_list, dtype=tf.int64)
 
-    u_emb = tf.nn.embedding_lookup(user_emb_w, self.u)
-
     ic = tf.gather(cate_list, self.i)
     i_emb = tf.concat(values = [
         tf.nn.embedding_lookup(item_emb_w, self.i),
