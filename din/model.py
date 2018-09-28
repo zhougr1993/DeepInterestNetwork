@@ -77,22 +77,6 @@ class Model(object):
     self.logits = i_b + d_layer_3_i
     u_emb_all = tf.expand_dims(u_emb, 1)
     u_emb_all = tf.tile(u_emb_all, [1, item_count, 1])
-    # logits for all item:
-    all_emb = tf.concat([
-        item_emb_w,
-        tf.nn.embedding_lookup(cate_emb_w, cate_list)
-        ], axis=1)
-    all_emb = tf.expand_dims(all_emb, 0)
-    all_emb = tf.tile(all_emb, [512, 1, 1])
-    din_all = tf.concat([u_emb_all, all_emb], axis=-1)
-    din_all = tf.layers.batch_normalization(inputs=din_all, name='b1', reuse=True)
-    d_layer_1_all = tf.layers.dense(din_all, 80, activation=tf.nn.sigmoid, name='f1', reuse=True)
-    #d_layer_1_all = dice(d_layer_1_all, name='dice_1_all')
-    d_layer_2_all = tf.layers.dense(d_layer_1_all, 40, activation=tf.nn.sigmoid, name='f2', reuse=True)
-    #d_layer_2_all = dice(d_layer_2_all, name='dice_2_all')
-    d_layer_3_all = tf.layers.dense(d_layer_2_all, 1, activation=None, name='f3', reuse=True)
-    d_layer_3_all = tf.reshape(d_layer_3_all, [-1, item_count])
-    self.logits_all = tf.sigmoid(item_b + d_layer_3_all)
     #-- fcn end -------
 
     
@@ -146,13 +130,6 @@ class Model(object):
         self.sl: uij[4],
         })
     return u_auc, socre_p_and_n
-
-  def test(self, sess, uid, hist_i, sl):
-    return sess.run(self.logits_all, feed_dict={
-        self.u: uid,
-        self.hist_i: hist_i,
-        self.sl: sl,
-        })
 
   def save(self, sess, path):
     saver = tf.train.Saver()
