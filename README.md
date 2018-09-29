@@ -16,7 +16,7 @@ Bibtex:
 ```
 
 ## Requirements
-* Python >= 3.6.1
+* Python >= 2.6.1
 * NumPy >= 1.12.1
 * Pandas >= 0.20.1
 * TensorFlow >= 1.4.0 (Probably earlier version should work too, though I didn't test it)
