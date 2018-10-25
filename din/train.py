@@ -15,6 +15,9 @@ tf.set_random_seed(1234)
 
 train_batch_size = 32
 test_batch_size = 512
+predict_batch_size = 32
+predict_users_num = 1000
+predict_ads_num = 100
 
 with open('dataset.pkl', 'rb') as f:
   train_set = pickle.load(f)
@@ -81,11 +84,23 @@ def _eval(sess, model):
     model.save(sess, 'save_path/ckpt')
   return test_gauc, Auc
 
+def _test(sess, model):
+  auc_sum = 0.0
+  score_arr = []
+  predicted_users_num = 0
+  print "test sub items"
+  for _, uij in DataInputTest(test_set, predict_batch_size):
+    if predicted_users_num >= predict_users_num:
+        break
+    score_ = model.test(sess, uij)
+    score_arr.append(score_)
+    predicted_users_num += predict_batch_size
+  return score_[0]
 
 gpu_options = tf.GPUOptions(allow_growth=True)
 with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
 
-  model = Model(user_count, item_count, cate_count, cate_list)
+  model = Model(user_count, item_count, cate_count, cate_list, predict_batch_size, predict_ads_num)
   sess.run(tf.global_variables_initializer())
   sess.run(tf.local_variables_initializer())
 

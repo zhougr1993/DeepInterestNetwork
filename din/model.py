@@ -4,7 +4,7 @@ from Dice import dice
 
 class Model(object):
 
-  def __init__(self, user_count, item_count, cate_count, cate_list):
+  def __init__(self, user_count, item_count, cate_count, cate_list, predict_batch_size, predict_ads_num):
 
     self.u = tf.placeholder(tf.int32, [None,]) # [B]
     self.i = tf.placeholder(tf.int32, [None,]) # [B]
@@ -47,8 +47,8 @@ class Model(object):
     #-- attention end ---
     
     hist = tf.layers.batch_normalization(inputs = hist)
-    hist = tf.reshape(hist, [-1, hidden_units])
-    hist = tf.layers.dense(hist, hidden_units)
+    hist = tf.reshape(hist, [-1, hidden_units], name='hist_bn')
+    hist = tf.layers.dense(hist, hidden_units, name='hist_fcn')
 
     u_emb = hist
     print u_emb.get_shape().as_list()
@@ -75,8 +75,36 @@ class Model(object):
     d_layer_3_j = tf.reshape(d_layer_3_j, [-1])
     x = i_b - j_b + d_layer_3_i - d_layer_3_j # [B]
     self.logits = i_b + d_layer_3_i
-    u_emb_all = tf.expand_dims(u_emb, 1)
-    u_emb_all = tf.tile(u_emb_all, [1, item_count, 1])
+    
+    # prediciton for selected items
+    # logits for selected item:
+    item_emb_all = tf.concat([
+        item_emb_w,
+        tf.nn.embedding_lookup(cate_emb_w, cate_list)
+        ], axis=1)
+    item_emb_sub = item_emb_all[:predict_ads_num,:]
+    item_emb_sub = tf.expand_dims(item_emb_sub, 0)
+    item_emb_sub = tf.tile(item_emb_sub, [predict_batch_size, 1, 1])
+    hist_sub =attention_multi_items(item_emb_sub, h_emb, self.sl)
+    #-- attention end ---
+    
+    hist_sub = tf.layers.batch_normalization(inputs = hist_sub, name='hist_bn', reuse=tf.AUTO_REUSE)
+    # print hist_sub.get_shape().as_list() 
+    hist_sub = tf.reshape(hist_sub, [-1, hidden_units])
+    hist_sub = tf.layers.dense(hist_sub, hidden_units, name='hist_fcn', reuse=tf.AUTO_REUSE)
+
+    u_emb_sub = hist_sub
+    item_emb_sub = tf.reshape(item_emb_sub, [-1, hidden_units])
+    din_sub = tf.concat([u_emb_sub, item_emb_sub], axis=-1)
+    din_sub = tf.layers.batch_normalization(inputs=din_sub, name='b1', reuse=True)
+    d_layer_1_sub = tf.layers.dense(din_sub, 80, activation=None, name='f1', reuse=True)
+    d_layer_1_sub = dice(d_layer_1_sub, name='dice_1_sub')
+    d_layer_2_sub = tf.layers.dense(d_layer_1_sub, 40, activation=None, name='f2', reuse=True)
+    d_layer_2_sub = dice(d_layer_2_sub, name='dice_2_sub')
+    d_layer_3_sub = tf.layers.dense(d_layer_2_sub, 1, activation=None, name='f3', reuse=True)
+    d_layer_3_sub = tf.reshape(d_layer_3_sub, [-1, predict_ads_num])
+    self.logits_sub = tf.sigmoid(item_b[:predict_ads_num] + d_layer_3_sub)
+    self.logits_sub = tf.reshape(self.logits_sub, [-1, predict_ads_num, 1])
     #-- fcn end -------
 
     
@@ -130,6 +158,16 @@ class Model(object):
         self.sl: uij[4],
         })
     return u_auc, socre_p_and_n
+  
+  def test(self, sess, uij):
+    return sess.run(self.logits_sub, feed_dict={
+        self.u: uij[0],
+        self.i: uij[1],
+        self.j: uij[2],
+        self.hist_i: uij[3],
+        self.sl: uij[4],
+        })
+  
 
   def save(self, sess, path):
     saver = tf.train.Saver()
@@ -177,3 +215,43 @@ def attention(queries, keys, keys_length):
 
   return outputs
 
+def attention_multi_items(queries, keys, keys_length):
+  '''
+    queries:     [B, N, H] N is the number of ads
+    keys:        [B, T, H] 
+    keys_length: [B]
+  '''
+  queries_hidden_units = queries.get_shape().as_list()[-1]
+  queries_nums = queries.get_shape().as_list()[1]
+  queries = tf.tile(queries, [1, 1, tf.shape(keys)[1]])
+  queries = tf.reshape(queries, [-1, queries_nums, tf.shape(keys)[1], queries_hidden_units]) # shape : [B, N, T, H]
+  max_len = tf.shape(keys)[1]
+  keys = tf.tile(keys, [1, queries_nums, 1])
+  keys = tf.reshape(keys, [-1, queries_nums, max_len, queries_hidden_units]) # shape : [B, N, T, H]
+  din_all = tf.concat([queries, keys, queries-keys, queries*keys], axis=-1)
+  d_layer_1_all = tf.layers.dense(din_all, 80, activation=tf.nn.sigmoid, name='f1_att', reuse=tf.AUTO_REUSE)
+  d_layer_2_all = tf.layers.dense(d_layer_1_all, 40, activation=tf.nn.sigmoid, name='f2_att', reuse=tf.AUTO_REUSE)
+  d_layer_3_all = tf.layers.dense(d_layer_2_all, 1, activation=None, name='f3_att', reuse=tf.AUTO_REUSE)
+  d_layer_3_all = tf.reshape(d_layer_3_all, [-1, queries_nums, 1, max_len])
+  outputs = d_layer_3_all 
+  # Mask
+  key_masks = tf.sequence_mask(keys_length, max_len)   # [B, T]
+  key_masks = tf.tile(key_masks, [1, queries_nums])
+  key_masks = tf.reshape(key_masks, [-1, queries_nums, 1, max_len]) # shape : [B, N, 1, T]
+  paddings = tf.ones_like(outputs) * (-2 ** 32 + 1)
+  outputs = tf.where(key_masks, outputs, paddings)  # [B, N, 1, T]
+
+  # Scale
+  outputs = outputs / (keys.get_shape().as_list()[-1] ** 0.5)
+
+  # Activation
+  outputs = tf.nn.softmax(outputs)  # [B, N, 1, T]
+  outputs = tf.reshape(outputs, [-1, 1, max_len])
+  keys = tf.reshape(keys, [-1, max_len, queries_hidden_units])
+  #print outputs.get_shape().as_list()
+  #print keys.get_sahpe().as_list()
+  # Weighted sum
+  outputs = tf.matmul(outputs, keys)
+  outputs = tf.reshape(outputs, [-1, queries_nums, queries_hidden_units])  # [B, N, 1, H]
+  print outputs.get_shape().as_list()
+  return outputs
