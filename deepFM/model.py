@@ -104,8 +104,8 @@ class Model(object):
 
     
     self.mf_auc = tf.reduce_mean(tf.to_float(x > 0))
-    self.score_i = tf.sigmoid(i_b + d_layer_3_i)
-    self.score_j = tf.sigmoid(j_b + d_layer_3_j)
+    self.score_i = tf.sigmoid(i_b + d_layer_3_i + d_layer_fm_i)
+    self.score_j = tf.sigmoid(j_b + d_layer_3_j + d_layer_fm_j)
     self.score_i = tf.reshape(self.score_i, [-1, 1])
     self.score_j = tf.reshape(self.score_j, [-1, 1])
     self.p_and_n = tf.concat([self.score_i, self.score_j], axis=-1)
