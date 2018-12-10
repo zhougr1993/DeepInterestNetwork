@@ -43,19 +43,29 @@ class Model(object):
         tf.nn.embedding_lookup(cate_emb_w, hc),
         ], axis=2)
 
-    hist =attention(i_emb, h_emb, self.sl)
+    hist_i =attention(i_emb, h_emb, self.sl)
     #-- attention end ---
     
-    hist = tf.layers.batch_normalization(inputs = hist)
-    hist = tf.reshape(hist, [-1, hidden_units], name='hist_bn')
-    hist = tf.layers.dense(hist, hidden_units, name='hist_fcn')
+    hist_i = tf.layers.batch_normalization(inputs = hist_i)
+    hist_i = tf.reshape(hist_i, [-1, hidden_units], name='hist_bn')
+    hist_i = tf.layers.dense(hist_i, hidden_units, name='hist_fcn')
 
-    u_emb = hist
-    print u_emb.get_shape().as_list()
+    u_emb_i = hist_i
+    
+    hist_j =attention(j_emb, h_emb, self.sl)
+    #-- attention end ---
+    
+    hist_j = tf.layers.batch_normalization(inputs = hist_j)
+    hist_j = tf.reshape(hist_j, [-1, hidden_units], name='hist_bn')
+    hist_j = tf.layers.dense(hist_j, hidden_units, name='hist_fcn', reuse=True)
+
+    u_emb_j = hist_j
+    print u_emb_i.get_shape().as_list()
+    print u_emb_j.get_shape().as_list()
     print i_emb.get_shape().as_list()
     print j_emb.get_shape().as_list()
     #-- fcn begin -------
-    din_i = tf.concat([u_emb, i_emb], axis=-1)
+    din_i = tf.concat([u_emb_i, i_emb], axis=-1)
     din_i = tf.layers.batch_normalization(inputs=din_i, name='b1')
     d_layer_1_i = tf.layers.dense(din_i, 80, activation=tf.nn.sigmoid, name='f1')
     #if u want try dice change sigmoid to None and add dice layer like following two lines. You can also find model_dice.py in this folder.
@@ -64,7 +74,7 @@ class Model(object):
     d_layer_2_i = tf.layers.dense(d_layer_1_i, 40, activation=tf.nn.sigmoid, name='f2')
     #d_layer_2_i = dice(d_layer_2_i, name='dice_2_i')
     d_layer_3_i = tf.layers.dense(d_layer_2_i, 1, activation=None, name='f3')
-    din_j = tf.concat([u_emb, j_emb], axis=-1)
+    din_j = tf.concat([u_emb_j, j_emb], axis=-1)
     din_j = tf.layers.batch_normalization(inputs=din_j, name='b1', reuse=True)
     d_layer_1_j = tf.layers.dense(din_j, 80, activation=tf.nn.sigmoid, name='f1', reuse=True)
     #d_layer_1_j = dice(d_layer_1_j, name='dice_1_j')
@@ -193,9 +203,9 @@ def attention(queries, keys, keys_length):
   queries = tf.tile(queries, [1, tf.shape(keys)[1]])
   queries = tf.reshape(queries, [-1, tf.shape(keys)[1], queries_hidden_units])
   din_all = tf.concat([queries, keys, queries-keys, queries*keys], axis=-1)
-  d_layer_1_all = tf.layers.dense(din_all, 80, activation=tf.nn.sigmoid, name='f1_att')
-  d_layer_2_all = tf.layers.dense(d_layer_1_all, 40, activation=tf.nn.sigmoid, name='f2_att')
-  d_layer_3_all = tf.layers.dense(d_layer_2_all, 1, activation=None, name='f3_att')
+  d_layer_1_all = tf.layers.dense(din_all, 80, activation=tf.nn.sigmoid, name='f1_att', reuse=tf.AUTO_REUSE)
+  d_layer_2_all = tf.layers.dense(d_layer_1_all, 40, activation=tf.nn.sigmoid, name='f2_att', reuse=tf.AUTO_REUSE)
+  d_layer_3_all = tf.layers.dense(d_layer_2_all, 1, activation=None, name='f3_att', reuse=tf.AUTO_REUSE)
   d_layer_3_all = tf.reshape(d_layer_3_all, [-1, 1, tf.shape(keys)[1]])
   outputs = d_layer_3_all 
   # Mask
