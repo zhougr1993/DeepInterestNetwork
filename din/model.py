@@ -55,7 +55,7 @@ class Model(object):
     hist_j =attention(j_emb, h_emb, self.sl)
     #-- attention end ---
     
-    hist_j = tf.layers.batch_normalization(inputs = hist_j)
+    hist_j = tf.layers.batch_normalization(inputs = hist_j, reuse=True)
     hist_j = tf.reshape(hist_j, [-1, hidden_units], name='hist_bn')
     hist_j = tf.layers.dense(hist_j, hidden_units, name='hist_fcn', reuse=True)
 
