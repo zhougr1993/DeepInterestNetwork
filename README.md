@@ -1,6 +1,19 @@
 # DeepInterestNetwork
 Deep Interest Network for Click-Through Rate Prediction
+## Important Statement
+This code is a demo to implement DIN on Amazon data. Unfortunately, the code
+quality is realy poor and there are many problems with this version of the code. Thus, we
+did major code refactoring and publish the new version of code in [DIEN](https://github.com/mouna99/dien) and [XDL](https://github.com/alibaba/x-deeplearning/tree/master/xdl-algorithm-solution/DIEN/script).
+We strongly recommend you to use [DIEN](https://github.com/mouna99/dien).
+Moreover, the wrong way to apply BatchNorm in DIN brings a faulty experimental
+result. We fix the bug and report the new results of DIN on Amazon(Electro):
 
+| Model | AUC | GAUC|
+| ------ | ------ | ------ |
+| DIN  |0.8698 | 0.8716|
+| DIN with Dice | 0.8711|0.8738 |
+
+The updated training log can be found in [DIN](https://github.com/zhougr1993/DeepInterestNetwork/tree/master/din)
 ## Introduction
 This is an implementation of the paper [Deep Interest Network for Click-Through Rate Prediction](https://arxiv.org/abs/1706.06978) Guorui Zhou, Chengru Song, Xiaoqiang Zhu, Han Zhu, Ying Fan, Na Mou, Xiao Ma, Yanghui Yan, Xingya Dai, Junqi Jin, Han Li, Kun Gai
 

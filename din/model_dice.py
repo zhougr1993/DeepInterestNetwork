@@ -55,7 +55,7 @@ class Model(object):
     hist_j =attention(j_emb, h_emb, self.sl)
     #-- attention end ---
     
-    hist_j = tf.layers.batch_normalization(inputs = hist_j)
+    hist_j = tf.layers.batch_normalization(inputs = hist_j, reuse=True)
     hist_j = tf.reshape(hist_j, [-1, hidden_units], name='hist_bn')
     hist_j = tf.layers.dense(hist_j, hidden_units, name='hist_fcn', reuse=True)
 
@@ -65,15 +65,16 @@ class Model(object):
     print i_emb.get_shape().as_list()
     print j_emb.get_shape().as_list()
     #-- fcn begin -------
-    din_i = tf.concat([u_emb_i, i_emb], axis=-1)
+    din_i = tf.concat([u_emb_i, i_emb, u_emb_i * i_emb], axis=-1)
     din_i = tf.layers.batch_normalization(inputs=din_i, name='b1')
+    #d_layer_1_i = tf.layers.dense(din_i, 80, activation=tf.nn.sigmoid, name='f1')
     #if u want try dice change sigmoid to None and add dice layer like following two lines. You can also find model_dice.py in this folder.
     d_layer_1_i = tf.layers.dense(din_i, 80, activation=None, name='f1')
     d_layer_1_i = dice(d_layer_1_i, name='dice_1')
     d_layer_2_i = tf.layers.dense(d_layer_1_i, 40, activation=None, name='f2')
     d_layer_2_i = dice(d_layer_2_i, name='dice_2')
     d_layer_3_i = tf.layers.dense(d_layer_2_i, 1, activation=None, name='f3')
-    din_j = tf.concat([u_emb_j, j_emb], axis=-1)
+    din_j = tf.concat([u_emb_j, j_emb, u_emb_j * j_emb], axis=-1)
     din_j = tf.layers.batch_normalization(inputs=din_j, name='b1', reuse=True)
     d_layer_1_j = tf.layers.dense(din_j, 80, activation=None, name='f1', reuse=True)
     d_layer_1_j = dice(d_layer_1_j, name='dice_1')
@@ -104,7 +105,7 @@ class Model(object):
 
     u_emb_sub = hist_sub
     item_emb_sub = tf.reshape(item_emb_sub, [-1, hidden_units])
-    din_sub = tf.concat([u_emb_sub, item_emb_sub], axis=-1)
+    din_sub = tf.concat([u_emb_sub, item_emb_sub, u_emb_sub * item_emb_sub], axis=-1)
     din_sub = tf.layers.batch_normalization(inputs=din_sub, name='b1', reuse=True)
     d_layer_1_sub = tf.layers.dense(din_sub, 80, activation=tf.nn.sigmoid, name='f1', reuse=True)
     #d_layer_1_sub = dice(d_layer_1_sub, name='dice_1_sub')
