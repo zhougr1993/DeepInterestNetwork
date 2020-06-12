@@ -8,10 +8,12 @@ We strongly recommend you to use [DIEN](https://github.com/mouna99/dien).
 Moreover, the wrong way to apply BatchNorm in DIN brings a faulty experimental
 result. We fix the bug and report the new results of DIN on Amazon(Electro):
 
-| Model | AUC | GAUC|
-| ------ | ------ | ------ |
-| DIN  |0.8698 | 0.8716|
-| DIN with Dice | 0.8711|0.8738 |
+| Model | GAUC|
+| ------ | ------ |
+|PNN|0.8679|
+|deepFM|0.8683|
+| DIN  |0.8698 | 
+| DIN with Dice | 0.8711|
 
 The updated training log can be found in [DIN](https://github.com/zhougr1993/DeepInterestNetwork/tree/master/din)
 ## Introduction
